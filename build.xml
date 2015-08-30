@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<project name="SerialTerminal" default="build">
+
+    <property file="build.settings"/>
+
+    <target name="clean" description="Clean the build directories">
+        <delete dir="bin" />
+        <delete file="SerialTerminal.jar" />
+    </target>
+
+    <target name="compile" description="Compile sources">
+        <mkdir dir="bin" />
+
+        <javac srcdir="src" 
+	        destdir="bin" 
+	        includeAntRuntime="false"
+	        classpath="${uecide.path}/uecide.jar" />
+    </target>
+   
+    <target name="build" depends="compile" description="Build the plugin jars">
+        <jar destfile="SerialTerminal.jar">
+            <fileset dir="bin" />
+            <fileset dir="resources" />
+            <manifest>
+                <attribute name="Version" value="${version}" />
+                <attribute name="Minimum-Version" value="${version.minimum}" />
+                <attribute name="Author" value="Majenko Technologies" />
+                <attribute name="Main-Class" value="org.uecide.plugin.SerialTerminal" />
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="install" depends="build">
+        <copy file="SerialTerminal.jar" todir="${install.path}" />
+    </target>
+
+    <target name="test" depends="install">
+        <exec executable="${uecide.path}/uecide.jar">
+            <arg value="--exceptions" />
+        </exec>
+    </target>
+
+</project>

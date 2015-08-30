@@ -1,0 +1,7 @@
+version=1.0.0 
+version.minimum=0.8.8alpha20
+bundle=true
+description=Serial terminal with some ANSI (including colour) support.
+# Path relative to a plugin directory, not this directory
+uecide.path=/usr/share/uecide
+install.path=/home/matt/.uecide/plugins
