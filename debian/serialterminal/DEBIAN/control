@@ -1,9 +1,0 @@
-Package: serialterminal
-Version: 1.0.0
-Architecture: all
-Maintainer: Matt Jenkins <matt@majenko.co.uk>
-Installed-Size: 47
-Section: plugins
-Priority: optional
-Description: Serial Terminal
- Serial Terminal emulator with ANSI support.
