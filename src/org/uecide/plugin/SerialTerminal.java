@@ -77,6 +77,7 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
         port = ctx.getDevice();
         if (port == null) {
             ctx.error("Error: You do not have a valid device selected.");
+            return;
         }
 
         Debug.message(this + ": Opening serial terminal on port " + port);
