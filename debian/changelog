@@ -1,0 +1,12 @@
+serialterminal (1.0.1) uecide; urgency=low
+
+  * Removed transient build files from repo
+
+ -- Matt Jenkins <matt@majenko.co.uk>  Sun, 6 Sep 2015 12:04:17 +0100
+
+serialterminal (1.0.0) uecide; urgency=low
+
+  * Initial Import
+
+ -- Matt Jenkins <matt@majenko.co.uk>  Sun, 30 Aug 2015 17:28:53 +0100
+

@@ -435,5 +435,9 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
     public void commsEventReceived(CommsEvent e) {
     }
 
+    public void addPanelsToTabs(JTabbedPane pane,int flags) { }
+
+    public void populateMenu(JPopupMenu menu, int flags) { }
+
 }
 
