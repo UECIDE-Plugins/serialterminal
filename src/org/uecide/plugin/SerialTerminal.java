@@ -67,10 +67,10 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
 
         Version iconTest = new Version("0.8.8alpha20");
 
-        if (Base.systemVersion.compareTo(iconTest) < 0) {
-            editor.error("Error: This version of the SerialTerminal plugin requires UECIDE version 0.8.8alpha20 or greater.");
-            return;
-        }
+//        if (Base.systemVersion.compareTo(iconTest) < 0) {
+//            editor.error("Error: This version of the SerialTerminal plugin requires UECIDE version 0.8.8alpha20 or greater.");
+//            return;
+//        }
 
         ctx = editor.getSketch().getContext();
 
