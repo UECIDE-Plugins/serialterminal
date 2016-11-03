@@ -58,6 +58,10 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
     public SerialTerminal(Editor e) { editor = e; }
     public SerialTerminal(EditorBase e) { editorTab = e; }
 
+    String[] history;
+
+    JButton[] shortcuts;
+
 
     public void run()
     {
@@ -124,6 +128,8 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
         term.setSize(new Dimension(width, height));
         term.setAutoCr(Preferences.getBoolean("pluhins.serialconsole.autocr_in"));
 
+        Box tsb = Box.createHorizontalBox();
+
         line.add(term);
         scrollbackBar = new JScrollBar(JScrollBar.VERTICAL);
         scrollbackBar.setMinimum(height);
@@ -135,7 +141,71 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
                 term.setScrollbackPosition(2000 - scrollbackBar.getValue());
             }
         });
-        line.add(scrollbackBar);
+        tsb.add(scrollbackBar);
+
+        Box btns = Box.createVerticalBox();
+
+        shortcuts = new JButton[10];
+
+        for (int i = 0; i < 9; i++) {
+            String name = Preferences.get("plugins.serialterminal.shortcut." + i + ".name");
+            if (name == null) {
+                name = "None";
+            }
+            shortcuts[i] = new JButton(name);
+            shortcuts[i].setActionCommand(Integer.toString(i));
+            shortcuts[i].addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    int i = 0;
+                    try {
+                        i = Integer.parseInt(e.getActionCommand());
+                    } catch (Exception ex) {
+                    }
+            
+                    if ((e.getModifiers() & InputEvent.CTRL_MASK) != 0) {
+                        JTextField scname = new JTextField(Preferences.get("plugins.serialterminal.shortcut." + i + ".name"));
+                        JTextField scstr = new JTextField(Preferences.get("plugins.serialterminal.shortcut." + i + ".string"));
+                        JCheckBox docr = new JCheckBox("CR");
+                        JCheckBox dolf = new JCheckBox("LF");
+
+                        docr.setSelected(Preferences.getBoolean("plugins.serialterminal.shortcut." + i + ".cr"));
+                        dolf.setSelected(Preferences.getBoolean("plugins.serialterminal.shortcut." + i + ".lf"));
+                        final JComponent[] inputs = new JComponent[] {
+                            new JLabel("Shortcut Name:"),
+                            scname,
+                            new JLabel("Shortcut Text:"),
+                            scstr,
+                            docr,
+                            dolf
+                        };
+                        int res = JOptionPane.showConfirmDialog(win, inputs, "Edit Shortcut", JOptionPane.OK_CANCEL_OPTION);
+                        if (res == JOptionPane.OK_OPTION) {
+                            Preferences.setBoolean("plugins.serialterminal.shortcut." + i + ".cr", docr.isSelected());
+                            Preferences.setBoolean("plugins.serialterminal.shortcut." + i + ".lf", dolf.isSelected());
+                            Preferences.set("plugins.serialterminal.shortcut." + i + ".name", scname.getText());
+                            Preferences.set("plugins.serialterminal.shortcut." + i + ".string", scstr.getText());
+                            shortcuts[i].setText(scname.getText());
+                        }
+                            
+                    } else {
+                        port.print(Preferences.get("plugins.serialterminal.shortcut." + i + ".string"));
+                        boolean cr = Preferences.getBoolean("plugins.serialterminal.shortcut." + i + ".cr");
+                        boolean lf = Preferences.getBoolean("plugins.serialterminal.shortcut." + i + ".cr");
+                        if (cr) port.print("\r");
+                        if (lf) port.print("\n");
+                    }
+                }
+            });
+            btns.add(shortcuts[i]);
+        }
+
+        JLabel edmess = new JLabel("<html><body><center>CTRL+Click<br/>to edit</center></body></html>");
+        btns.add(edmess);
+
+
+        tsb.add(btns);
+        
+        line.add(tsb);
         box.add(line);
         
         line = Box.createHorizontalBox();
@@ -170,12 +240,15 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
         lineEntry = new JCheckBox(Translate.t("Line Entry"));
         lineEntry.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
+                Preferences.setBoolean("plugins.serialterminal.linemode", lineEntry.isSelected());
                 entryLineArea.setVisible(lineEntry.isSelected());
                 subwin.pack();
                 subwin.repaint();
                 lineEntryBox.requestFocusInWindow();
             }
         });
+
+        lineEntry.setSelected(Preferences.getBoolean("plugins.serialterminal.linemode"));
 
         line.add(lineEntry);
 
@@ -224,12 +297,20 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
             }
         };
 
-        entryLineArea.setVisible(false);
+        entryLineArea.setVisible(Preferences.getBoolean("plugins.serialterminal.linemode"));
         lineEntryBox = new JTextField();
         lineEntryBox.setBackground(new Color(255, 255, 255));
         lineEntryBox.addActionListener(al);
 
         lineEndings = new JComboBox(new String[] {"None", "Carriage Return", "Line Feed", "CR + LF"});
+
+        lineEndings.setSelectedItem(Preferences.get("plugins.serialterminal.lineendings"));
+        lineEndings.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                Preferences.set("plugins.serialterminal.lineendings", (String)lineEndings.getSelectedItem());
+            }
+        });
+
         lineSubmit = new JButton("Send");
         lineSubmit.addActionListener(al);
                 
@@ -243,8 +324,8 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
 
         Dimension size = win.getSize();
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-        win.setLocation((screen.width - size.width) / 2,
-                          (screen.height - size.height) / 2);
+        win.setLocationRelativeTo(editor); //((screen.width - size.width) / 2,
+                          //(screen.height - size.height) / 2);
 
         win.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         win.addWindowListener(new WindowAdapter() {
