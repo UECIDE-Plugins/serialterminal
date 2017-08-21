@@ -310,13 +310,43 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
         bottomBox.add(entryLineArea);
 
 //        win.getContentPane().add(box);
-        win.setSize(600, 400);
-        win.pack();
 
-        Dimension size = win.getSize();
-        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-        win.setLocationRelativeTo(editor); //((screen.width - size.width) / 2,
-                          //(screen.height - size.height) / 2);
+
+        int width = Preferences.getInteger("plugins.serialterminal.window.width");
+        int height = Preferences.getInteger("plugins.serialterminal.window.height");
+        if (width == 0) width = 600;
+        if (height == 0) height = 400;
+
+        win.pack();
+        win.setSize(width, height);
+
+        int top = Preferences.getInteger("plugins.serialterminal.window.y");
+        int left = Preferences.getInteger("plugins.serialterminal.window.x");
+
+        if ((top == 0) && (left == 0)) {
+            win.setLocationRelativeTo(editor); 
+        } else {
+            win.setLocation(left, top);
+        }
+
+        win.addComponentListener(new ComponentListener() {
+            public void componentMoved(ComponentEvent e) {
+                Point windowPos = e.getComponent().getLocation(null);
+                Preferences.setInteger("plugins.serialterminal.window.x", windowPos.x);
+                Preferences.setInteger("plugins.serialterminal.window.y", windowPos.y);
+            }
+            public void componentResized(ComponentEvent e) {
+                Dimension windowSize = e.getComponent().getSize(null);
+                Preferences.setInteger("plugins.serialterminal.window.width", windowSize.width);
+                Preferences.setInteger("plugins.serialterminal.window.height", windowSize.height);
+            }
+            public void componentHidden(ComponentEvent e) {
+            }
+            public void componentShown(ComponentEvent e) {
+            }
+        });
+
+
 
         win.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         win.addWindowListener(new WindowAdapter() {
