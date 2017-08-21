@@ -211,19 +211,19 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
 
         line.add(localEcho);
         
-// TODO: Add a control to Gritty to enable/disable the cursor. Also different cursor types would be nice.
-//        showCursor = new JCheckBox(Translate.t("Show Cursor"));
-//        showCursor.addActionListener(new ActionListener() {
-//            public void actionPerformed(ActionEvent event) {
-//                if (ready) {
-//                    term.showCursor(showCursor.isSelected());
-//                    Preferences.setBoolean("plugins.serialterminal.cursor", showCursor.isSelected());
-//                }
-//            }
-//        });
-//        
-//        line.add(showCursor); 
-//        showCursor.setSelected(Preferences.getBoolean("plugins.serialterminal.cursor"));
+        showCursor = new JCheckBox(Translate.t("Show Cursor"));
+        term.getTermPanel().setCursorEnabled(Preferences.getBoolean("plugins.serialterminal.cursor"));
+        showCursor.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                if (ready) {
+                    term.getTermPanel().setCursorEnabled(showCursor.isSelected());
+                    Preferences.setBoolean("plugins.serialterminal.cursor", showCursor.isSelected());
+                }
+            }
+        });
+        
+        line.add(showCursor); 
+        showCursor.setSelected(Preferences.getBoolean("plugins.serialterminal.cursor"));
 
         JButton pulse = new JButton("Pulse Line");
         pulse.addActionListener(new ActionListener() {

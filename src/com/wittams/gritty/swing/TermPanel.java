@@ -47,6 +47,8 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.awt.event.FocusListener;
+import java.awt.event.FocusEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
@@ -117,8 +119,12 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 	protected volatile int newClientScrollOrigin;
 	protected volatile boolean shouldDrawCursor;
 	private KeyListener keyHandler;
-	
-	
+
+    public static final int CURSOR_BOX = 0;
+    public static final int CURSOR_BLOCK = 1;
+
+    private int cursorStyle = CURSOR_BLOCK;
+
 	public TermPanel(BackBuffer backBuffer, ScrollBuffer scrollBuffer, StyleState styleState) {
 		this.scrollBuffer = scrollBuffer;
 		this.backBuffer = backBuffer;
@@ -182,6 +188,17 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 				sizeTerminalFromComponent();
 			}
 		});
+
+        addFocusListener(new FocusListener() {
+            public void focusGained(FocusEvent e) {
+                cursorStyle = CURSOR_BLOCK;
+                cursorChanged = true;
+            }
+            public void focusLost(FocusEvent e) {
+                cursorStyle = CURSOR_BOX;
+                cursorChanged = true;
+            }
+        });
 
 		brm.addChangeListener(new ChangeListener() {
 			public void stateChanged(final ChangeEvent e) {
@@ -355,7 +372,7 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 		super.paintComponent(g);
 		if (img != null){
 			gfx.drawImage(img, 0, 0, termComponent);
-			drawCursor(gfx);
+			if (shouldDrawCursor) drawCursor(gfx);
 			drawSelection(gfx);
 		}
 	}
@@ -397,8 +414,13 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 			Style current = styleState.getCurrent();
 			g.setColor(current.getForeground());
 			g.setXORMode(current.getBackground());
-			g.fillRect(cursor.x * charSize.width, y * charSize.height, 
-					   charSize.width, charSize.height);
+            if (cursorStyle == CURSOR_BOX) {
+                g.drawRect(cursor.x * charSize.width, y * charSize.height, 
+                           charSize.width, charSize.height);
+            } else {
+                g.fillRect(cursor.x * charSize.width, y * charSize.height, 
+                           charSize.width, charSize.height);
+            }
 		}
 	}
 
@@ -653,6 +675,12 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 		boldFont = normalFont.deriveFont(Font.BOLD);
         
 		establishFontMetrics();
+    }
+
+    public void setCursorEnabled(boolean ce) {
+        shouldDrawCursor = ce;
+        cursorChanged = true;
+//        redrawFromDamage();
     }
 	
 }
