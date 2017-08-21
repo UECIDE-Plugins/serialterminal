@@ -20,15 +20,23 @@ import jssc.*;
 
 import say.swing.*;
 
+import com.wittams.gritty.swing.*;
 
-public class SerialTerminal extends Plugin implements CommsListener,MessageConsumer
+public class SerialTerminal extends Plugin //implements MessageConsumer
 {
     public static HashMap<String, String> pluginInfo = null;
     public static void setInfo(HashMap<String, String>info) { pluginInfo = info; }
     public static String getInfo(String item) { return pluginInfo.get(item); }
 
+    ArrayList<String> history = new ArrayList<String>();
+    int historySlot = -1;
+
     JFrame win = null;
-    JTerminal term;
+//    JTerminal term;
+
+    GrittyTerminal term;
+    SerialTty tty;
+
     CommunicationPort port;
     JComboBox baudRates;
     JCheckBox showCursor;
@@ -58,7 +66,6 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
     public SerialTerminal(Editor e) { editor = e; }
     public SerialTerminal(EditorBase e) { editorTab = e; }
 
-    String[] history;
 
     JButton[] shortcuts;
 
@@ -89,63 +96,28 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
 
         win = new JFrame(Translate.t("Serial Terminal"));
         win.getContentPane().setLayout(new BorderLayout());
-        win.setResizable(false);
+//        win.setResizable(false);
 
-        Box box = Box.createVerticalBox();
 
-        Box line = Box.createHorizontalBox();
 
-        term = new JTerminal();
-        Font f = Preferences.getFont("plugins.serialterminal.font");
-        if (f == null) {
-            f = new Font("Monospaced", Font.PLAIN, 12);
-            Preferences.set("plugins.serialterminal.font", "Monospaced,plain,12");
-        }
-        term.setFont(f);
-        String cp = Preferences.get("plugins.serialconsole.codepage");
-        if (cp == null) {
-            cp = "cp850";
-        }
-        term.loadCodePage("/org/uecide/plugin/SerialTerminal/" + cp + ".cp");
-        term.setKeypressConsumer(this);
-        term.boxCursor(true);
 
-        int width = 80;
-        int height = 24;
+        term = new GrittyTerminal();
+        tty = new SerialTty(port);
+        term.setFont(Preferences.getFont("plugins.serialterminal.font"));
+        term.getTermPanel().setSize(new Dimension(100, 100));
+        term.getTermPanel().setAntiAliasing(true);
+        term.setTty(tty);
 
-        try {
-            height = Integer.parseInt(Preferences.get("plugins.serialconsole.height"));
-        } catch (Exception e) {
-            height = 24;
-        }
+        term.start();
 
-        try {
-            width = Integer.parseInt(Preferences.get("plugins.serialconsole.width"));
-        } catch (Exception e) {
-            width = 80;
-        }
+        win.getContentPane().add(term.getTermPanel(), BorderLayout.CENTER);
+        win.getContentPane().add(term.getScrollBar(), BorderLayout.EAST);
 
-        term.setSize(new Dimension(width, height));
-        term.setAutoCr(Preferences.getBoolean("pluhins.serialconsole.autocr_in"));
-
-        Box tsb = Box.createHorizontalBox();
-
-        line.add(term);
-        scrollbackBar = new JScrollBar(JScrollBar.VERTICAL);
-        scrollbackBar.setMinimum(height);
-        scrollbackBar.setMaximum(2000 + height);
-        scrollbackBar.setValue(2000);
-        scrollbackBar.setVisibleAmount(height);
-        scrollbackBar.addAdjustmentListener(new AdjustmentListener() {
-            public void adjustmentValueChanged(AdjustmentEvent e) {
-                term.setScrollbackPosition(2000 - scrollbackBar.getValue());
-            }
-        });
-        tsb.add(scrollbackBar);
-
-        Box btns = Box.createVerticalBox();
+//        term.setAutoCr(Preferences.getBoolean("pluhins.serialconsole.autocr_in"));
+        tty.setAddCR(Preferences.getBoolean("pluhins.serialconsole.autocr_in"));
 
         shortcuts = new JButton[10];
+        Box shortcutBox = Box.createVerticalBox();
 
         for (int i = 0; i < 9; i++) {
             String name = Preferences.get("plugins.serialterminal.shortcut." + i + ".name");
@@ -196,19 +168,19 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
                     }
                 }
             });
-            btns.add(shortcuts[i]);
+            shortcutBox.add(shortcuts[i]);
         }
 
         JLabel edmess = new JLabel("<html><body><center>CTRL+Click<br/>to edit</center></body></html>");
-        btns.add(edmess);
+        shortcutBox.add(edmess);
 
+        win.getContentPane().add(shortcutBox, BorderLayout.WEST);
 
-        tsb.add(btns);
-        
-        line.add(tsb);
-        box.add(line);
-        
-        line = Box.createHorizontalBox();
+        Box bottomBox = Box.createVerticalBox();
+        win.getContentPane().add(bottomBox, BorderLayout.SOUTH);
+
+        Box line = Box.createHorizontalBox();
+        bottomBox.add(line);
 
         line.add(Box.createHorizontalGlue());
 
@@ -236,34 +208,22 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
         localEcho = new JCheckBox(Translate.t("Local Echo"));
 
         final JFrame subwin = win;
-        
-        lineEntry = new JCheckBox(Translate.t("Line Entry"));
-        lineEntry.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent event) {
-                Preferences.setBoolean("plugins.serialterminal.linemode", lineEntry.isSelected());
-                entryLineArea.setVisible(lineEntry.isSelected());
-                subwin.pack();
-                subwin.repaint();
-                lineEntryBox.requestFocusInWindow();
-            }
-        });
 
-        lineEntry.setSelected(Preferences.getBoolean("plugins.serialterminal.linemode"));
-
-        line.add(lineEntry);
-
-        showCursor = new JCheckBox(Translate.t("Show Cursor"));
-        showCursor.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent event) {
-                if (ready) {
-                    term.showCursor(showCursor.isSelected());
-                    Preferences.setBoolean("plugins.serialterminal.cursor", showCursor.isSelected());
-                }
-            }
-        });
-        
         line.add(localEcho);
-        line.add(showCursor);
+        
+// TODO: Add a control to Gritty to enable/disable the cursor. Also different cursor types would be nice.
+//        showCursor = new JCheckBox(Translate.t("Show Cursor"));
+//        showCursor.addActionListener(new ActionListener() {
+//            public void actionPerformed(ActionEvent event) {
+//                if (ready) {
+//                    term.showCursor(showCursor.isSelected());
+//                    Preferences.setBoolean("plugins.serialterminal.cursor", showCursor.isSelected());
+//                }
+//            }
+//        });
+//        
+//        line.add(showCursor); 
+//        showCursor.setSelected(Preferences.getBoolean("plugins.serialterminal.cursor"));
 
         JButton pulse = new JButton("Pulse Line");
         pulse.addActionListener(new ActionListener() {
@@ -272,7 +232,6 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
             }
         });
         line.add(pulse);
-        box.add(line);
 
         entryLineArea = Box.createHorizontalBox();
 
@@ -280,6 +239,9 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
             public void actionPerformed(ActionEvent e) {
                 try {
                     port.print(lineEntryBox.getText());
+                    if (historySlot == -1) {
+                        history.add(lineEntryBox.getText());
+                    }
                     if (((String)lineEndings.getSelectedItem()).equals("Carriage Return")) {
                         port.print("\r");
                     }
@@ -297,10 +259,38 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
             }
         };
 
-        entryLineArea.setVisible(Preferences.getBoolean("plugins.serialterminal.linemode"));
         lineEntryBox = new JTextField();
         lineEntryBox.setBackground(new Color(255, 255, 255));
         lineEntryBox.addActionListener(al);
+
+        lineEntryBox.addKeyListener(new KeyListener() {
+            public void keyTyped(KeyEvent e) {
+            }
+            public void keyPressed(KeyEvent e) {
+                switch (e.getKeyCode()) {
+                    case 38: // Up
+                        if (historySlot == -1) {
+                            historySlot = history.size();
+                        }
+                        historySlot--;
+                        if (historySlot < 0) historySlot = 0;
+                        lineEntryBox.setText(history.get(historySlot));
+                        break;
+                    case 40: // Down
+                        if (historySlot == -1) break;
+                        historySlot++;
+                        if (historySlot >= history.size()) 
+                            historySlot = history.size()-1;
+                        lineEntryBox.setText(history.get(historySlot));
+                        break;
+                    default:
+                        historySlot = -1;
+                        break;
+                }
+            }
+            public void keyReleased(KeyEvent e) {
+            }
+        });
 
         lineEndings = new JComboBox(new String[] {"None", "Carriage Return", "Line Feed", "CR + LF"});
 
@@ -317,9 +307,9 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
         entryLineArea.add(lineEntryBox);
         entryLineArea.add(lineSubmit);
         entryLineArea.add(lineEndings);
-        box.add(entryLineArea);
+        bottomBox.add(entryLineArea);
 
-        win.getContentPane().add(box);
+//        win.getContentPane().add(box);
         win.pack();
 
         Dimension size = win.getSize();
@@ -335,7 +325,7 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
         });
         Base.setIcon(win);
 
-        term.clearScreen();
+ //       term.clearScreen();
         try {
             baudRate = Preferences.getInteger("plugins.serialterminal.speed");
             for (CommsSpeed s : availableSpeeds) {
@@ -351,7 +341,7 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
                 return;
             }
                 
-            term.setDisconnected(false);
+//            term.setDisconnected(false);
             if (!port.openPort()) {
                 ctx.error("Error: " + port.getLastError());
                 win.dispose();
@@ -366,9 +356,8 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
             win = null;
             return;
         }
-        showCursor.setSelected(Preferences.getBoolean("plugins.serialterminal.cursor"));
-        term.showCursor(Preferences.getBoolean("plugins.serialterminal.cursor"));
-        port.addCommsListener(this);
+//        term.showCursor(Preferences.getBoolean("plugins.serialterminal.cursor"));
+//        port.addCommsListener(this);
 
         win.setTitle(Translate.t("Serial Terminal") + " :: " + port);
         win.setVisible(true);
@@ -392,24 +381,24 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
     public void warning(String m) { ctx.warning(m); }
     public void error(String m) { ctx.error(m); }
 
-    public void message(String m) {
-        if (port == null) {
-            win.setVisible(false);
-            return;
-        }
-        if (Preferences.getBoolean("plugins.serialterminall.autocr_out")) {
-            m = m.replace("\n", "\r\n");
-        }
-
-        if (localEcho.isSelected()) {
-            term.message(m);
-        }
-        try {
-            port.print(m);
-        } catch (Exception e) {
-            Base.error(e);
-        }
-    }
+//    public void message(String m) {
+//        if (port == null) {
+//            win.setVisible(false);
+//            return;
+//        }
+//        if (Preferences.getBoolean("plugins.serialterminall.autocr_out")) {
+//            m = m.replace("\n", "\r\n");
+//        }
+//
+//        if (localEcho.isSelected()) {
+//            tty.feed(m);
+//        }
+//        try {
+//            port.print(m);
+//        } catch (Exception e) {
+//            Base.error(e);
+//        }
+//    }
     
     public void addToolbarButtons(JToolBar toolbar, int flags) {
         if (flags == Plugin.TOOLBAR_EDITOR) {
@@ -483,16 +472,6 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
         }
     }
 
-    public void commsDataReceived(byte[] bytes) {
-        String s = "";
-        for (byte b : bytes) {
-            int i = ((int)b) & 0xFF;
-            s += (char)i;
-        }
-        term.message(s);
-        //term.message(port.readString());
-    }
-
     public void populateMenu(JMenu menu, int flags) {
         if (flags == (Plugin.MENU_TOOLS | Plugin.MENU_MID)) {
             JMenuItem item = new JMenuItem("Serial Terminal");
@@ -513,9 +492,6 @@ public class SerialTerminal extends Plugin implements CommsListener,MessageConsu
     }
 
     public ImageIcon getFileIconOverlay(File f) { return null; }
-
-    public void commsEventReceived(CommsEvent e) {
-    }
 
     public void addPanelsToTabs(JTabbedPane pane,int flags) { }
 
