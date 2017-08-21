@@ -15,6 +15,7 @@ import javax.swing.text.*;
 import javax.swing.tree.*;
 import java.awt.*;
 import java.awt.event.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import jssc.*;
 
@@ -309,8 +310,34 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
         entryLineArea.add(lineEndings);
         bottomBox.add(entryLineArea);
 
-//        win.getContentPane().add(box);
 
+
+        JMenuBar menu = new JMenuBar();
+        JMenu fileMenu = new JMenu("File");
+        menu.add(fileMenu);
+
+        JMenuItem save = new JMenuItem("Save Session");
+        fileMenu.add(save);
+        save.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    saveSession();
+                } catch (Exception exc) {
+                    Base.error(exc);
+                }
+            }
+        });
+
+        JMenuItem closeItem = new JMenuItem("Close");
+        fileMenu.add(closeItem);
+        closeItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                close();
+            }
+        });
+
+
+        win.getContentPane().add(menu, BorderLayout.NORTH);
 
         int width = Preferences.getInteger("plugins.serialterminal.window.width");
         int height = Preferences.getInteger("plugins.serialterminal.window.height");
@@ -527,6 +554,47 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
     public void addPanelsToTabs(JTabbedPane pane,int flags) { }
 
     public void populateMenu(JPopupMenu menu, int flags) { }
+
+    public void saveSession() throws IOException {
+        JFileChooser fc = new JFileChooser();
+        fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+        fc.setFileFilter(new FileNameExtensionFilter("Text Files", "txt"));
+        int n = fc.showSaveDialog(win);
+        if (n == JFileChooser.APPROVE_OPTION) {
+            File f = fc.getSelectedFile();
+            if (f.exists()) {
+                int conf = JOptionPane.showConfirmDialog(win, "File exists. Overwrite?", "Overwrite?", JOptionPane.YES_NO_OPTION);
+                if (conf == JOptionPane.OK_OPTION) {
+                    f.delete();
+                } else {
+                    return;
+                }
+            }
+            String[] scroll = term.getBufferText(GrittyTerminal.BufferType.Scroll).split("\n");
+            String[] back = term.getBufferText(GrittyTerminal.BufferType.Back).split("\n");
+
+            PrintWriter pw = new PrintWriter(f);
+            boolean skip = true;
+            for (String s : scroll) {
+                if (s.trim().equals("") && skip) {
+                    continue;
+                }
+                skip = false;
+                pw.println(s.replaceAll("\\s+$",""));
+            }
+            for (String s : back) {
+                if (s.trim().equals("") && skip) {
+                    continue;
+                }
+                skip = false;
+                pw.println(s.replaceAll("\\s+$",""));
+            }
+            pw.close();
+
+
+        }
+
+    }
 
 }
 
