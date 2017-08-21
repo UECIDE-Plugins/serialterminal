@@ -310,6 +310,7 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
         bottomBox.add(entryLineArea);
 
 //        win.getContentPane().add(box);
+        win.setSize(600, 400);
         win.pack();
 
         Dimension size = win.getSize();
