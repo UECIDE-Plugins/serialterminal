@@ -114,6 +114,17 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
         win.getContentPane().add(term.getTermPanel(), BorderLayout.CENTER);
         win.getContentPane().add(term.getScrollBar(), BorderLayout.EAST);
 
+        term.getTermPanel().addMouseWheelListener(new MouseWheelListener() {
+            public void mouseWheelMoved(MouseWheelEvent e) {
+                term.getScrollBar().setValue(
+                    term.getScrollBar().getValue() + (
+                        e.getScrollAmount() * e.getWheelRotation()
+                    )
+                );
+            }
+        });
+
+
 //        term.setAutoCr(Preferences.getBoolean("pluhins.serialconsole.autocr_in"));
         tty.setAddCR(Preferences.getBoolean("pluhins.serialconsole.autocr_in"));
 
