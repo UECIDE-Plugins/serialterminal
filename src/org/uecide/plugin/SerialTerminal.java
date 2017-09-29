@@ -126,7 +126,7 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
 
 
 //        term.setAutoCr(Preferences.getBoolean("pluhins.serialconsole.autocr_in"));
-        tty.setAddCR(Preferences.getBoolean("plugins.serialconsole.autocr_in"));
+        tty.setAddCR(Preferences.getBoolean("plugins.serialterminal.autocr_in"));
 
         shortcuts = new JButton[10];
         Box shortcutBox = Box.createVerticalBox();
