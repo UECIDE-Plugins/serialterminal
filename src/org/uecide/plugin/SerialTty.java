@@ -22,7 +22,7 @@ public class SerialTty implements Tty, CommsListener {
     }
 
     public boolean init(Questioner q) {
-        feed("[37m[40m[2J[1;1H");
+        feed("[37m[40m");
         return true;
     }
 

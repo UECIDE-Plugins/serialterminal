@@ -71,11 +71,21 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
     JButton[] shortcuts;
 
 
+    boolean havePortExists = false;
+
+    Thread portCheckThread = null;
+    boolean running = true;
+    boolean portIsPresent = false;
+
     public void run()
     {
+
+        running = true;
+
         if (win != null) {
             close();
         }
+
 
         Version iconTest = new Version("0.8.8alpha20");
 
@@ -92,8 +102,41 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
             return;
         }
 
+
+        try {
+            port.exists();
+            havePortExists = true;
+        } catch (NoSuchMethodError e) {
+            havePortExists = false;
+        }
+
         Debug.message(this + ": Opening serial terminal on port " + port);
 
+        if (havePortExists) {
+            portIsPresent = true;
+            portCheckThread = new Thread() {
+                public void run() {
+                    while (running) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (Exception e) {
+                        }
+                        if (!port.exists()) {
+                            if (portIsPresent) {
+                                portIsPresent = false;
+                                disable();
+                            }
+                        } else {
+                            if (!portIsPresent) {
+                                portIsPresent = true;
+                                enable();
+                            }
+                        }
+                    }
+                }
+            };
+            portCheckThread.start();
+        }
 
         win = new JFrame(Translate.t("Serial Terminal"));
         win.getContentPane().setLayout(new BorderLayout());
@@ -404,6 +447,7 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
             }
             Debug.message(this + ": Open port " + port);
             if (port == null) {
+                running = false;
                 ctx.error("Error: Unable to open serial port");
                 win.dispose();
                 win = null;
@@ -412,6 +456,7 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
                 
 //            term.setDisconnected(false);
             if (!port.openPort()) {
+                running = false;
                 ctx.error("Error: " + port.getLastError());
                 win.dispose();
                 win = null;
@@ -419,6 +464,7 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
             }
             port.setSpeed(baudRate);
         } catch(Exception e) {
+            running = false;
             ctx.error("Error: Unable to open serial port:");
             ctx.error(e);
             win.dispose();
@@ -435,6 +481,7 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
 
     public void close()
     {
+        running = false;
         ready = false;
         for( ActionListener al : baudRates.getActionListeners() ) {
             baudRates.removeActionListener( al );
@@ -605,6 +652,33 @@ public class SerialTerminal extends Plugin //implements MessageConsumer
 
         }
 
+    }
+
+    void disable() {
+        tty.feed("\r\n\n[31m** Port Closed **[0m\r\n\n");
+        port.closePort();
+        term.stop();
+    }
+
+    void enable() {
+        int tries = 100;
+        while (tries > 0) {
+            if (port.openPort()) {
+                port.setSpeed(baudRate);
+//                tty = new SerialTty(port);
+//                term.setTty(tty);
+
+                term.start();
+
+                tty.feed("\r\n\n[32m** Port Opened **[0m\r\n\n");
+                return;
+            }
+            try {
+                Thread.sleep(10);
+            } catch (Exception ex) {
+            }
+            tries--;
+        }
     }
 
 }
